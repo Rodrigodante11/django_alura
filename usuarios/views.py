@@ -24,7 +24,7 @@ def cadastro(request):
             print('As senhas nao sao iguais')
             return redirect('cadastro')
 
-        if User.objects.filter(email=email).exists():
+        if User.objects.filter(email=email).exists(): # Verificando se o email existe na base de dados
             print('Usuario ja cadastrado')
             return redirect('cadastro')
         user = User.objects.create_user(username=nome, email=email, password=senha)  # criando um objeto do usuario
@@ -41,15 +41,29 @@ def login(request):
         email = request.POST['email']  # ['email'] == campo name=`email` da tag <input>
         senha = request.POST['senha']
         if email == "" or senha == "":
+
             return redirect('login')
-        print(email, senha)
-        return redirect('dashboard')
+
+        if User.objects.filter(email=email).exists():  # Verificando se o email existe na base de dados
+            nome = User.objects.filter(email=email).values_list('username', flat=True).get()  # pegando o username
+
+            user = auth.authenticate(request, username=nome, password=senha)  # autenticando o usuario
+
+            if user is not None:
+                auth.login(request, user)
+                print('login Sucesso')
+                return redirect('dashboard')
+
     return render(request, 'usuarios/login.html')
 
 
 def logout(request):
-    return render(request, 'usuarios/logout.html')
+    auth.logout(request)
+    return redirect('index')
 
 
 def dashboard(request):
-    return render(request, 'usuarios/dashboard.html')
+    if request.user.is_authenticated:  # Para se exibir a dashboard.html se estiver um usuario logado
+        return render(request, 'usuarios/dashboard.html')
+    else:
+        return redirect('index')
