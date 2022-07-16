@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User  # trazendo os modelos ja cadastrados
+from django.contrib import auth
 
 
 def cadastro(request):
@@ -36,6 +37,13 @@ def cadastro(request):
 
 
 def login(request):
+    if request.method == 'POST':  # Olhe a pagina login.html  27:   <form action="{%  url 'login' %}" method="POST">
+        email = request.POST['email']  # ['email'] == campo name=`email` da tag <input>
+        senha = request.POST['senha']
+        if email == "" or senha == "":
+            return redirect('login')
+        print(email, senha)
+        return redirect('dashboard')
     return render(request, 'usuarios/login.html')
 
 
