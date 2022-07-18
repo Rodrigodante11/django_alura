@@ -1,6 +1,7 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User  # trazendo os modelos ja cadastrados
-from django.contrib import auth
+from django.contrib import auth, messages
+from receitas.models import Receita
 
 
 def cadastro(request):
@@ -13,24 +14,24 @@ def cadastro(request):
         # print(nome, email, senha , senha2)
 
         if not nome.strip():
-            print('O campo nome nao pode ficar em branco')  # so deu espaco no campo nome
+            messages.error(request, 'O campo nome nao pode ficar em branco')  # so deu espaco no campo nome
             return redirect('cadastro')
 
         if not email.strip():
-            print('O campo email nao pode ficar em branco')  # so deu espaco no email nome
+            messages.error(request, 'O campo email nao pode ficar em branco')  # so deu espaco no email nome
             return redirect('cadastro')
 
         if senha != senha2:
-            print('As senhas nao sao iguais')
+            messages.error(request, 'As senhas nao sao iguais')
             return redirect('cadastro')
 
-        if User.objects.filter(email=email).exists(): # Verificando se o email existe na base de dados
-            print('Usuario ja cadastrado')
+        if User.objects.filter(email=email).exists():  # Verificando se o email existe na base de dados
+            messages.error(request, 'Usuario ja cadastrado')
             return redirect('cadastro')
         user = User.objects.create_user(username=nome, email=email, password=senha)  # criando um objeto do usuario
         user.save()  # salvando o usuario na base de dados
-        print('Usuario cadastrado com sucesso')
 
+        messages.success(request, 'Usuario cadastrado com sucesso')
         return redirect('login')
     else:
         return render(request, 'usuarios/cadastro.html')
@@ -41,7 +42,6 @@ def login(request):
         email = request.POST['email']  # ['email'] == campo name=`email` da tag <input>
         senha = request.POST['senha']
         if email == "" or senha == "":
-
             return redirect('login')
 
         if User.objects.filter(email=email).exists():  # Verificando se o email existe na base de dados
@@ -64,10 +64,38 @@ def logout(request):
 
 def dashboard(request):
     if request.user.is_authenticated:  # Para se exibir a dashboard.html se estiver um usuario logado
-        return render(request, 'usuarios/dashboard.html')
+        id = request.user.id
+
+        # enviando as receitas por filtro do usuario logado
+        receitas = Receita.objects.order_by('-data_receita').filter(pessoa=id)
+
+        dados = {
+            'receitas':receitas
+        }
+        return render(request, 'usuarios/dashboard.html', dados)
     else:
         return redirect('index')
 
 
 def cria_receita(request):
-    return render(request,  'usuarios/cria_receita.html')
+    if request.method == 'POST':
+        # Pegando todos os dados do template cria_receita.html
+        nome_receita = request.POST['nome_receita']
+        ingredientes = request.POST['ingredientes']
+        modo_preparo = request.POST['modo_preparo']
+        tempo_preparo = request.POST['tempo_preparo']
+        rendimento = request.POST['rendimento']
+        categoria = request.POST['categoria']
+        foto_receita = request.FILES['foto_receita']
+
+        user = get_object_or_404(User, pk=request.user.id)  # pegando o usuario logado
+
+        receita = Receita.objects.create(  # criando um objeto de receitas
+            pessoa=user, nome_receita=nome_receita, ingredientes=ingredientes, modo_preparo=modo_preparo,
+            tempo_preparo=tempo_preparo, rendimento=rendimento, categoria=categoria, foto_receita=foto_receita
+        )
+        receita.save()  # Salvando o objeto no banco de dados
+        return redirect('dashboard')
+
+    else:
+        return render(request, 'usuarios/cria_receita.html')
